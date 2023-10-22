@@ -7,16 +7,20 @@ import App from './app.js';
 const cli = meow(
 	`
 	Usage
-	  $ git-blocks-cli
+	  $ git-booster-cli
 
 	Options
-		--all            Display all available blocks
-		--short-statuses Use short status notations for change types
-		--tag            Display only blocks having specified tags (separated by comma)
+		--all, -a            Display all available blocks
+		--only, -o           Display only specified block
+		--compound, -c       Display only blocks with multiple command sets
+		--short-statuses, -s Use short status notations for change types
+		--tag, -t            Display only blocks having specified tags (separated by comma)
 
 	Examples
-	  $ git-blocks-cli --all
-	  $ git-blocks-cli --no-short-statuses
+	  $ git-booster-cli --all
+	  $ git-booster-cli --compound
+	  $ git-booster-cli --only addCommitPush
+	  $ git-booster-cli --no-short-statuses
 	  $ git-booster-cli --tag add,commit,reset,restore
 `,
 	{
@@ -25,18 +29,37 @@ const cli = meow(
 			all: {
 				type: 'boolean',
 				default: false,
+				shortFlag: 'a',
+			},
+			only: {
+				type: 'string',
+				shortFlag: 'o',
+			},
+			compound: {
+				type: 'boolean',
+				shortFlag: 'c',
 			},
 			shortStatuses: {
 				type: 'boolean',
 				default: true,
+				shortFlag: 's',
 			},
 			tag: {
 				type: 'string',
+				shortFlag: 't',
 			},
 		},
 	},
 );
 
-const {all, shortStatuses, tag} = cli.flags;
+const {all, only, compound, shortStatuses, tag} = cli.flags;
 
-render(<App isOnlyMain={!all} isShortStatuses={shortStatuses} tags={tag} />);
+render(
+	<App
+		isOnlyMain={!all}
+		isOnlyBlock={only}
+		isOnlyCompound={compound}
+		isShortStatuses={shortStatuses}
+		tags={tag}
+	/>,
+);

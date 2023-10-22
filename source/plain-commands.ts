@@ -8,11 +8,22 @@ const plainCommands: BlockItem[] = [
 		displayName: 'add-commit',
 		desc: 'Performs\ngit add -A\ngit commit -m <message>\n',
 		tags: ['commit', 'composed'],
+		namespaced: true,
 		requestedArgs: [
 			{
 				name: 'message',
 				paramName: '-m',
+				path: ['commit', 'message'],
 				required: true,
+				defaultValue: 'Added ',
+			},
+			{
+				name: 'quiet',
+				paramName: '',
+				path: ['commit', 'quiet'],
+				mapToParam: true,
+				excludeFromCommand: true,
+				defaultValue: 'false',
 			},
 		],
 	},
@@ -26,11 +37,22 @@ const plainCommands: BlockItem[] = [
 			{
 				name: 'branch',
 				paramName: '',
+				required: true,
+				defaultValue: 'main',
 			},
 			{
 				name: 'force',
 				paramName: 'force',
+				mapToParam: true,
 				excludeFromCommand: true,
+				defaultValue: 'false',
+			},
+			{
+				name: 'remote',
+				paramName: '',
+				mapToSelf: true,
+				excludeFromCommand: true,
+				defaultValue: 'origin',
 			},
 		],
 	},
@@ -40,18 +62,31 @@ const plainCommands: BlockItem[] = [
 		displayName: 'add-commit-push',
 		desc: 'Performs \ngit add -A\ngit commit -m <message>\ngit push origin <branch>',
 		tags: ['commit', 'push'],
+		namespaced: true,
 		requestedArgs: [
 			{
 				name: 'message',
 				required: true,
 				path: ['commit', 'message'],
 				paramName: '-m',
+				defaultValue: 'Added ',
+			},
+			{
+				name: 'remote',
+				path: ['push', 'remote'],
+				paramName: '',
+				required: true,
+				excludeFromCommand: true,
+				mapToSelf: true,
+				defaultValue: 'origin',
 			},
 			{
 				name: 'branch',
 				path: ['push', 'branch'],
 				excludeFromCommand: true,
+				mapToSelf: true,
 				paramName: '',
+				defaultValue: 'main',
 			},
 		],
 	},
@@ -64,6 +99,11 @@ const plainCommands: BlockItem[] = [
 			{
 				name: 'count',
 				paramName: '-n',
+				defaultValue: '2',
+			},
+			{
+				name: 'grep',
+				paramName: '--grep',
 			},
 			{
 				name: 'after',
@@ -80,10 +120,9 @@ const plainCommands: BlockItem[] = [
 			{
 				name: 'patch',
 				paramName: '',
-				mapToRule(value) {
-					return toBoolean(value) ? '-p' : undefined;
-				},
+				mapToParam: true,
 				excludeFromCommand: true,
+				defaultValue: 'false',
 			},
 			{
 				name: 'oneline',
@@ -92,6 +131,7 @@ const plainCommands: BlockItem[] = [
 					return toBoolean(value) ? '--oneline' : undefined;
 				},
 				excludeFromCommand: true,
+				defaultValue: 'false',
 			},
 		],
 	},
@@ -104,6 +144,7 @@ const plainCommands: BlockItem[] = [
 			{
 				name: 'target',
 				paramName: '',
+				defaultValue: '.',
 			},
 		],
 	},
@@ -118,6 +159,7 @@ const plainCommands: BlockItem[] = [
 				paramName: '',
 				mapToRule: value => (toBoolean(value) ? '--short' : undefined),
 				excludeFromCommand: true,
+				defaultValue: 'false',
 			},
 		],
 	},
@@ -144,7 +186,9 @@ const plainCommands: BlockItem[] = [
 			{
 				name: 'hard',
 				paramName: '',
+				mapToParam: true,
 				excludeFromCommand: true,
+				defaultValue: 'false',
 			},
 			{
 				name: 'treeIsh',
@@ -152,6 +196,7 @@ const plainCommands: BlockItem[] = [
 				mapToSelf: true,
 				excludeFromCommand: true,
 				required: true,
+				defaultValue: 'HEAD~2',
 			},
 		],
 	},
@@ -167,6 +212,7 @@ const plainCommands: BlockItem[] = [
 				mapToSelf: true,
 				excludeFromCommand: true,
 				required: true,
+				defaultValue: '.',
 			},
 		],
 	},
@@ -177,10 +223,19 @@ const plainCommands: BlockItem[] = [
 		tags: ['rebase'],
 		requestedArgs: [
 			{
+				name: 'root',
+				paramName: '',
+				mapToParam: true,
+				excludeFromCommand: true,
+				defaultValue: 'false',
+			},
+			{
 				name: 'source',
 				paramName: '',
 				mapToSelf: true,
 				excludeFromCommand: true,
+				skipIfAnyPropIsSet: ['root'],
+				defaultValue: 'HEAD~2',
 			},
 			{
 				name: 'interactive',
@@ -189,6 +244,7 @@ const plainCommands: BlockItem[] = [
 					return toBoolean(value) ? '-i' : undefined;
 				},
 				excludeFromCommand: true,
+				defaultValue: 'false',
 			},
 		],
 	},
@@ -203,12 +259,51 @@ const plainCommands: BlockItem[] = [
 				paramName: '',
 				mapToRule: value => (toBoolean(value) ? '--amend' : undefined),
 				excludeFromCommand: true,
+				defaultValue: 'false',
 			},
 			{
 				name: 'message',
 				paramName: '-m',
+				defaultValue: 'Added ',
 			},
 		],
+	},
+	{
+		id: 13,
+		name: 'cloneCheckout',
+		displayName: 'clone-checkout',
+		tags: ['clone', 'checkout'],
+		namespaced: true,
+		requestedArgs: [
+			{
+				name: 'remote',
+				path: ['clone', 'remote'],
+				paramName: '',
+				required: true,
+				mapToSelf: true,
+				defaultValue: 'git@github.com:akgondber/micro-starter.git',
+			},
+			{
+				name: 'newBranch',
+				path: ['checkout', 'branch'],
+				paramName: '-b',
+				required: true,
+			},
+		],
+	},
+	{
+		id: 14,
+		name: 'info',
+		displayName: 'info',
+		tags: ['info', 'misc'],
+		requestedArgs: [],
+	},
+	{
+		id: 15,
+		name: 'conflicts',
+		displayName: 'files-with-conflicts',
+		tags: ['files', 'ls', 'conflicts'],
+		requestedArgs: [],
 	},
 ];
 

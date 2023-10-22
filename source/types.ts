@@ -1,13 +1,21 @@
 type Props = {
 	readonly isOnlyMain?: boolean;
+	readonly isOnlyBlock?: string;
 	readonly isShortStatuses?: boolean;
 	tags?: string;
+	isOnlyCompound?: boolean;
 };
 
-type CommandResult = {
-	command: string;
+type SimpleResult = {
 	message: string;
-	status: 'success' | 'error' | 'warning';
+	status: CommandStatus;
+};
+
+type CommandStatus = 'success' | 'error' | 'warning';
+type CommandState = CommandStatus | 'unknown';
+
+type CommandResult = SimpleResult & {
+	command: string;
 };
 
 type ChangedFile = {
@@ -26,6 +34,9 @@ type RequestedArgItem = {
 	excludeFromCommand?: boolean;
 	mapToRule?: MapFn;
 	mapToSelf?: boolean;
+	mapToParam?: boolean;
+	skipIfAnyPropIsSet?: string[];
+	defaultValue?: string;
 };
 
 type BlockItemPlain = {
@@ -34,6 +45,7 @@ type BlockItemPlain = {
 	requestedArgs: RequestedArgItem[];
 	tags?: string[];
 	desc?: string;
+	namespaced?: boolean;
 };
 
 type BlockItem = BlockItemPlain & {
@@ -49,6 +61,9 @@ type Pred<T> = (x: T) => boolean;
 
 export type {
 	Props,
+	CommandStatus,
+	CommandState,
+	SimpleResult,
 	CommandResult,
 	ChangedFile,
 	RequestedArgItem,

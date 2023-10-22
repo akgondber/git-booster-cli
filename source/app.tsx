@@ -1,3 +1,4 @@
+import path from 'node:path';
 import React, {useState} from 'react';
 import {Text, Box, Newline, Spacer, useInput} from 'ink';
 import TextInput from 'ink-text-input';
@@ -5,127 +6,88 @@ import Spinner from 'ink-spinner';
 import RangeStepper from 'range-stepper';
 import figures from 'figures';
 import * as R from 'ramda';
+import {type Options} from 'execa';
+import {
+	applyFilters,
+	argToPath,
+	collectParameterizedItems,
+	collectParametersValuesPipe,
+	getBlockStatus,
+	getCurrentParameters,
+	getRepoName,
+	getStateValueByKey,
+	getStateValueByKeyNamespaced,
+	getSubState,
+	prependNameValueIfNamespaced,
+} from './app-utils.js';
 import {
 	getStatusBgColor,
 	getFigure,
 	getId,
-	toBoolean,
 	notEmpty,
 	isEven,
+	isNotFalsey,
 } from './helpers.js';
-import type {
-	Props,
-	CommandResult,
-	ChangedFile,
-	RequestedArgItem,
-	BlockItemCard,
-	AppState,
-	BlockItem,
-	Pred,
+import {
+	type Props,
+	type CommandResult,
+	type ChangedFile,
+	type RequestedArgItem,
+	type BlockItemCard,
+	type AppState,
+	type BlockItem,
+	type Pred,
+	type CommandStatus,
+	type CommandState,
 } from './types.js';
-import {runGitCommand} from './git-utils.js';
-import {havingKey} from './ramda-utils.js';
+import {getConflictedFiles, getInfo, runGitCommand} from './git-utils.js';
+import {havingKey, prependIf, rejectLastEmpty} from './ramda-utils.js';
 import {plainCommands} from './plain-commands.js';
 
-const collectSelfValues = (stateObject: any, argItems: RequestedArgItem[]) =>
-	R.map(
-		(argItem: RequestedArgItem) => {
-			const wrt = R.propOr('', argItem.name, stateObject);
-			return wrt;
-		},
-		R.filter(havingKey('mapToSelf'), argItems),
-	);
+/* eslint complexity: ["error", 28] */
 
 export default function App({
 	isOnlyMain = true,
+	isOnlyBlock = undefined,
+	isOnlyCompound = undefined,
 	isShortStatuses = true,
 	tags,
 }: Props) {
 	const [appStatus, setAppStatus] = useState<AppState>('WAITING');
-	const [performedCommands, setPerformedCommands] = useState<CommandResult[]>(
-		[],
-	);
+	const [resultItems, setResultItems] = useState<CommandResult[]>([]);
 	const [commandRunning, setCommandRunning] = useState(false);
-	const states = {
-		addCommit: useState({message: 'Init'}),
-		push: useState({
-			branch: 'main',
-			force: 'false',
-		}),
-		addCommitPush: useState({
-			commit: {
-				message: 'Added ',
-			},
-			push: {
-				branch: 'main',
-			},
-		}),
-		diff: useState({
-			target: '',
-		}),
-		status: useState({
-			short: 'false',
-		}),
-		log: useState({
-			after: '',
-			before: '',
-			author: '',
-			count: '2',
-			patch: 'false',
-			oneline: 'true',
-		}),
-		reset: useState({
-			hard: 'false',
-			treeIsh: 'HEAD^',
-		}),
-		restore: useState({
-			path: '.',
-		}),
-		rebase: useState({
-			interactive: 'false',
-			source: 'HEAD~2',
-		}),
-		commit: useState({
-			amend: false,
-			message: '',
-		}),
-	};
-
 	const [erroredFields, setErroredFields] = useState({});
-	const mainCommandNames = [
-		'addCommitPush',
-		'reset',
-		'addInteractive',
-		'status',
-		'log',
-		'push',
-	];
+	const [firstDisplayedCardIndex, setFirstDisplayedCardIndex] = useState(0);
 
-	const applyFilters = () => {
-		let result = plainCommands;
+	const commands: BlockItemCard[] = applyFilters(plainCommands, {
+		isOnlyBlock,
+		isOnlyCompound,
+		isOnlyMain,
+		tags,
+	}).map((item: BlockItem, idx: number) => {
+		return R.mergeLeft({number: idx}, item);
+	});
+	let states: Record<string, any> = {};
 
-		if (!R.isNil(tags)) {
-			result = R.filter(
-				a =>
-					R.isNotNil(a.tags) &&
-					R.intersection(R.split(' ', tags), a.tags).length > 0,
-				result,
+	R.forEach((blockItem: BlockItem): any => {
+		let currentObject = {};
+		R.forEach((requestedArg: RequestedArgItem) => {
+			currentObject = R.set(
+				R.lensPath(
+					// R.ifElse(R.has('path'), R.propOr('', 'path'), R.compose((value: string) => [value], R.propOr('', 'name')))(requestedArg) as string[]
+					prependIf(
+						blockItem.name,
+						R.always(R.propOr(false, 'namespaced', blockItem)),
+						argToPath(requestedArg),
+					),
+				),
+				R.defaultTo('', requestedArg.defaultValue),
+				currentObject,
 			);
-		} else if (isOnlyMain) {
-			result = R.filter(
-				R.propSatisfies(R.flip(R.includes)(mainCommandNames), 'name'),
-				result,
-			);
-		}
-
-		return result;
-	};
-
-	const commands: BlockItemCard[] = applyFilters().map(
-		(item: BlockItem, idx: number) => {
-			return R.mergeLeft({number: idx}, item);
-		},
-	);
+		}, blockItem.requestedArgs);
+		// eslint-disable-next-line react-hooks/rules-of-hooks
+		states = R.set(R.lensProp(blockItem.name), useState(currentObject), states);
+	}, commands);
 
 	const [blocksStepper, setBlocksStepper] = useState(
 		new RangeStepper({max: R.isEmpty(commands) ? 0 : R.dec(commands.length)}),
@@ -135,45 +97,16 @@ export default function App({
 			max: R.path(['0', 'requestedArgs', 'length'], commands)!,
 		}),
 	);
-
-	const getCurrentParameters = (index: number) => {
-		const command = commands[index]!;
-
-		const mapping = R.mapObjIndexed(
-			(statePair: any[], _key, _object): unknown => R.head(statePair),
-			states,
-		);
-		// (() => {} R.keys(states))
-		// const mapping = {
-		// 	addCommitPush: states.addCommitPush[0],
-		// 	addCommit: states.addCommit[0],
-		// 	diff: states.diff[0],
-		// 	push: states.push[0],
-		// 	log: states.log[0],
-		// 	reset: states.reset[0],
-		// 	restore: states.reset[0],
-		// };
-
-		if (R.includes(R.prop('name', command), R.keys(mapping))) {
-			const result = R.propOr('', R.prop('name', command), mapping);
-			return result;
-		}
-
-		if (
-			R.propSatisfies(
-				R.includes(R.__, ['addInteractive', 'checkUpdates']),
-				'name',
-				command,
-			)
-		) {
-			return {};
-		}
-
-		return {};
-	};
+	const [lastDisplayedCardIndex, setLastDisplayedCardIndex] = useState(4);
 
 	const getBlockColor = (index: number): string => {
-		return blocksStepper.value === index ? 'green' : '';
+		return blocksStepper.isCurrent(index) ? 'green' : '';
+	};
+
+	const getBlockStatusFigure = (status: CommandStatus | CommandState) => {
+		if (status === 'success') return <Text color="green"> {figures.tick}</Text>;
+		if (status === 'error') return <Text color="red"> {figures.cross}</Text>;
+		return <Text />;
 	};
 
 	const isRunButtonActive = (index: number, itemCount: number): boolean => {
@@ -182,14 +115,19 @@ export default function App({
 
 	const focusedStepperEquals = R.equals(focusedItemStepper.value);
 
-	function buildBlock(blockItem: BlockItemCard) {
+	function buildBlock(blockItem: BlockItemCard, commandState: CommandState) {
 		const blockIndex = blockItem.number;
 		const isCurrentBlock = blocksStepper.isCurrent(blockIndex);
 
 		return (
 			<Box borderStyle="round" borderColor={getBlockColor(blockIndex)}>
 				<Box flexDirection="column">
-					<Text color="green">{blockItem.displayName}</Text>
+					<Box>
+						<Text italic color="cyan">
+							{blockItem.displayName}
+						</Text>
+						<Text>{getBlockStatusFigure(commandState)}</Text>
+					</Box>
 					{blockItem.desc
 						? blockItem.desc
 								.split('\n')
@@ -225,14 +163,18 @@ export default function App({
 								value={String(
 									R.pathOr(
 										'',
-										R.isNil(arg.path) ? [arg.name] : arg.path,
-										getCurrentParameters(blocksStepper.value) as any,
+										prependNameValueIfNamespaced(blockItem, argToPath(arg)),
+										getCurrentParameters(getCommandValue(), states),
 									)!,
 								)}
 								onChange={value => {
-									// eslint-disable-next-line @typescript-eslint/no-confusing-void-expression,  @typescript-eslint/no-unsafe-assignment
-									const statePair = R.prop(blockItem.name, states) as any;
-									const pathValue: string[] = R.propOr([arg.name], 'path', arg);
+									const statePair: any[] = R.propOr([], blockItem.name, states);
+									let pathValue: string[] = R.propOr([arg.name], 'path', arg);
+									pathValue = prependNameValueIfNamespaced(
+										blockItem,
+										pathValue,
+									);
+
 									if (R.has(arg.name, erroredFields) && !R.isEmpty(value)) {
 										setErroredFields(R.omit([arg.name]));
 									}
@@ -264,6 +206,7 @@ export default function App({
 							>
 								SUBMIT
 							</Text>
+							<Text>{isCurrentBlock ? R.repeat(' ', 18) : ''}</Text>
 						</Box>
 					)}
 				</Box>
@@ -271,53 +214,63 @@ export default function App({
 		);
 	}
 
-	const getParameterValue = (arg: RequestedArgItem): string => {
-		const blockIndex = blocksStepper.value;
-
-		if (arg.path) {
-			return R.view(R.lensPath(arg.path), getCurrentParameters(blockIndex));
-		}
-
-		return R.propOr('', arg.name, getCurrentParameters(blockIndex));
-	};
-
 	const getStateValue = (argItem: RequestedArgItem) => {
 		return R.path(
-			R.isNil(argItem.path) ? [argItem.name] : argItem.path,
-			getCurrentParameters(blocksStepper.value),
+			prependNameValueIfNamespaced(currentCommand, argToPath(argItem)),
+			getCurrentParameters(getCommandValue(), states),
 		);
 	};
 
 	const buildParametersAndValues = () => {
-		const requestArgs = currentRequestedArgs;
-
-		const preparedArgs = R.pipe(
-			R.reject(
-				(argItem: RequestedArgItem) =>
-					R.propOr(false, 'mapToSelf', argItem) ||
-					R.propOr(false, 'excludeFromCommand', argItem),
-			),
-
-			R.map((value: RequestedArgItem) => [
-				value.paramName,
-				getParameterValue(value),
-			]),
-		)(requestArgs);
+		const preparedArgs: any[] = collectParametersValuesPipe(
+			getCommandValue(),
+			states,
+		)(currentRequestedArgs);
 
 		return R.sortBy(R.compose(R.isEmpty, R.head), preparedArgs);
 	};
 
+	const buildParametersAndValuesFor = (subCommand: string) => {
+		const preparedArgs = collectParametersValuesPipe(
+			getCommandValue(),
+			states,
+		)(R.filter(R.pathEq(subCommand, ['path', 0]), currentRequestedArgs));
+
+		return R.sortBy(R.compose(R.isEmpty, R.head), preparedArgs);
+	};
+
+	const runGitCommandNamespaced = async (
+		commandName: string,
+		currentCommand: BlockItemCard,
+		states: Record<string, any>,
+		options?: Options,
+	): Promise<CommandResult> => {
+		const commitState = getSubState(currentCommand, states, commandName);
+		const selfValues = collectSelfValues(commitState, currentRequestedArgs);
+
+		const gitArguments: string[] = flattenCompact([
+			commandName,
+			selfValues,
+			collectParameterizedItems(currentRequestedArgs, {
+				states,
+				currentCommand,
+			}),
+			R.reject(rejectLastEmpty, buildParametersAndValuesFor(commandName)),
+		]);
+		const result = await runGitCommand(gitArguments, options);
+		return result;
+	};
+
 	const isOptionActive = (value: string) => {
-		return R.propEq(value, 'name', commands[blocksStepper.value]!);
+		return R.propEq(value, 'name', currentCommand);
 	};
 
 	const notFilled = (value: any): boolean =>
 		R.either(R.isEmpty, R.isNil)(value);
 
-	const getActiveBlockName = () =>
-		R.prop('name', commands[blocksStepper.value]!);
+	const getActiveBlockName = () => R.prop('name', currentCommand);
 	const pickResultProps = R.pick(['command', 'status', 'message']);
-	const flattenCompact = (value: any[]) =>
+	const flattenCompact = (value: any[]): string[] =>
 		R.reject(R.either(R.isEmpty, R.isNil), R.flatten(value)); // eslint-disable-line @typescript-eslint/no-unsafe-return
 	const [addFilesSectionActive, setAddFilesSectionActive] = useState(false);
 	const [addedFiles, setAddedFiles] = useState<string[]>([]);
@@ -350,11 +303,9 @@ export default function App({
 			}
 
 			const statusShortKey = R.nth(0, changesFlags)!;
-			// eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
-			const extendedStatus = R.prop(statusShortKey, shortFlagsMapping);
-			const result = ['staged', extendedStatus!];
+			const extendedStatus = R.propOr('', statusShortKey, shortFlagsMapping);
 
-			return result;
+			return ['staged', String(extendedStatus)];
 		};
 
 		for (const parts of items) {
@@ -375,14 +326,91 @@ export default function App({
 		setSelectFilesPanelStepper(new RangeStepper({max: toAdd.length}));
 	};
 
-	const currentCommand = commands[blocksStepper.value];
+	if (R.isEmpty(commands)) {
+		return (
+			<Box>
+				<Text>
+					There is no blocks satisfying specified parameters. Available tags:
+					<Newline />
+					{R.pipe(
+						R.flatten,
+						R.uniq,
+					)(R.map(R.propOr([], 'tags'), plainCommands)!).map((tagName, i) => (
+						<Text
+							key={getId()}
+							color={isEven(i) ? '#cf1578' : '#1e3d59'}
+							backgroundColor={isEven(i) ? '#e8d21d' : '#f5f0e1'}
+						>
+							{tagName}
+							<Newline />
+						</Text>
+					))}
+				</Text>
+			</Box>
+		);
+	}
+
+	const getCommandValue = (): BlockItemCard => {
+		const result = commands[blocksStepper.value];
+
+		if (result === undefined) {
+			throw new Error('Unable to get currentCommand');
+		}
+
+		return result;
+	};
+
+	const currentCommand: BlockItemCard = getCommandValue();
 	const currentRequestedArgs = R.prop('requestedArgs', currentCommand)!;
 
 	const isRequired = (requestedArgItem: RequestedArgItem): boolean => {
 		return R.prop('required', requestedArgItem) === true;
 	};
 
-	/* eslint-disable complexity */
+	const collectSelfValues = (
+		stateObject: any,
+		argItems: RequestedArgItem[],
+	) => {
+		return R.map(
+			(argItem: RequestedArgItem) =>
+				R.pathOr('', argToPath(argItem), stateObject),
+			R.filter(
+				havingKey('mapToSelf'),
+				R.reject((argItem: RequestedArgItem) => {
+					return (
+						R.has('skipIfAnyPropIsSet', argItem) &&
+						R.any((stateKey: string) =>
+							R.both(
+								notEmpty,
+								isNotFalsey,
+							)(getStateValueByKey(stateKey, currentCommand, states)),
+						)(argItem.skipIfAnyPropIsSet!)
+					);
+				}, argItems),
+			),
+		);
+	};
+
+	const toBeXedItems = (files: string[], desc: string) => (
+		<Box
+			flexDirection="column"
+			marginRight={2}
+			borderStyle="single"
+			borderColor="#89c3b2"
+		>
+			<Text color="yellow" backgroundColor="black">
+				{desc}
+			</Text>
+			{files.map(file => (
+				<Box key={getId()}>
+					<Text>{file}</Text>
+				</Box>
+			))}
+		</Box>
+	);
+	const selectedFiles = [...addedFiles, ...toUnstageFiles];
+
+	/* eslint-disable complexity, react-hooks/rules-of-hooks */
 	useInput(async (input, key) => {
 		if (R.isEmpty(commands)) return;
 
@@ -444,16 +472,16 @@ export default function App({
 			if (key.return) {
 				if (!selectFilesPanelStepper?.hasNext()) {
 					if (addedFiles.length > 0 || toUnstageFiles.length > 0) {
-						setPerformedCommands([]);
+						setResultItems([]);
 					}
 
 					addedFiles.map(async file => {
 						const result = await runGitCommand(['add', file]);
-						setPerformedCommands(R.append(pickResultProps(result)));
+						setResultItems(R.append(pickResultProps(result)));
 					});
 					toUnstageFiles.map(async file => {
 						const result = await runGitCommand(['restore', '--staged', file]);
-						setPerformedCommands(R.append(pickResultProps(result)));
+						setResultItems(R.append(pickResultProps(result)));
 					});
 					const result = await runGitCommand(['status', '--porcelain']);
 					fillAvailableFiles(R.prop('message', result));
@@ -493,6 +521,23 @@ export default function App({
 			const newBlocksStepper = (
 				key.rightArrow ? blocksStepper.next() : blocksStepper.previous()
 			).dup();
+			if (newBlocksStepper.value === 0) {
+				setFirstDisplayedCardIndex(0);
+				setLastDisplayedCardIndex(
+					newBlocksStepper.max < 4 ? newBlocksStepper.max : 4,
+				);
+			} else if (!newBlocksStepper.hasNext()) {
+				const newFirstIndex = blocksStepper.max - 4;
+				setFirstDisplayedCardIndex(newFirstIndex < 0 ? 0 : newFirstIndex);
+				setLastDisplayedCardIndex(blocksStepper.max);
+			} else if (newBlocksStepper.value > lastDisplayedCardIndex) {
+				setFirstDisplayedCardIndex(R.inc(firstDisplayedCardIndex));
+				setLastDisplayedCardIndex(R.inc(lastDisplayedCardIndex));
+			} else if (newBlocksStepper.value < firstDisplayedCardIndex) {
+				setFirstDisplayedCardIndex(R.dec(firstDisplayedCardIndex));
+				setLastDisplayedCardIndex(R.dec(lastDisplayedCardIndex));
+			}
+
 			setBlocksStepper(newBlocksStepper);
 			setFocusedItemStepper(
 				new RangeStepper({
@@ -514,13 +559,12 @@ export default function App({
 			if (focusedStepperEquals(currentRequestedArgs.length)) {
 				if (
 					R.any(
-						R.both<Pred<RequestedArgItem>>(
-							isRequired,
-							R.pipe(getStateValue, notFilled),
-						),
+						R.both(isRequired, R.pipe(getStateValue, notFilled)),
 						currentRequestedArgs,
 					)
 				) {
+					// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+					// @ts-expect-error
 					R.forEach(
 						(current: RequestedArgItem) => {
 							setErroredFields(
@@ -529,7 +573,11 @@ export default function App({
 								}),
 							);
 						},
+						// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+						// @ts-expect-error
 						R.filter(
+							// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+							// @ts-expect-error
 							R.both<Pred<RequestedArgItem>>(
 								isRequired,
 								R.pipe(getStateValue, notFilled),
@@ -543,7 +591,7 @@ export default function App({
 				setAvailableToAddFiles([]);
 				setCommandRunning(true);
 				setAppStatus('RUNNING');
-				setPerformedCommands([]);
+				setResultItems([]);
 
 				let result;
 
@@ -551,56 +599,53 @@ export default function App({
 				if (isOptionActive('addCommit')) {
 					const args = ['add', '-A'];
 					result = await runGitCommand(args);
-					setPerformedCommands(R.append(pickResultProps(result)));
+					setResultItems(R.append(pickResultProps(result)));
 
-					result = await runGitCommand(
-						R.flatten(['commit', buildParametersAndValues()]),
+					result = await runGitCommandNamespaced(
+						'commit',
+						currentCommand,
+						states,
 					);
-					setPerformedCommands(R.append(pickResultProps(result)));
+					setResultItems(R.append(pickResultProps(result)));
 				} else if (isOptionActive('addCommitPush')) {
 					result = await runGitCommand(['add', '-A']);
-					setPerformedCommands(R.append(pickResultProps(result)));
+					setResultItems(R.append(pickResultProps(result)));
 
 					result = await runGitCommand(
-						R.flatten(['commit', buildParametersAndValues()]),
+						R.flatten(['commit', buildParametersAndValuesFor('commit')]),
 					);
-					setPerformedCommands(R.append(pickResultProps(result)));
+					setResultItems(R.append(pickResultProps(result)));
+					result = await runGitCommandNamespaced(
+						'push',
+						currentCommand,
+						states,
+					);
+					setResultItems(R.append(pickResultProps(result)));
+				} else if (isOptionActive('cloneCheckout')) {
+					result = await runGitCommandNamespaced(
+						'clone',
+						currentCommand,
+						states,
+					);
+					setResultItems(R.append(pickResultProps(result)));
 
-					result = await runGitCommand(
-						flattenCompact([
-							'push',
-							'origin',
-							R.path(['push', 0, 'branch'], states),
-						]),
+					result = await runGitCommandNamespaced(
+						'checkout',
+						currentCommand,
+						states,
+						{
+							cwd: path.join(
+								process.cwd(),
+								getRepoName(
+									getStateValueByKeyNamespaced(currentCommand, states, [
+										'clone',
+										'remote',
+									]),
+								),
+							),
+						},
 					);
-					setPerformedCommands(R.append(pickResultProps(result)));
-				} else if (isOptionActive('push')) {
-					const filterParameters = R.filter(
-						R.pathEq('', ['0']),
-						buildParametersAndValues(),
-					);
-					const useForce = toBoolean(R.path(['push', 0, 'force'], states));
-
-					result = await runGitCommand(
-						flattenCompact([
-							'push',
-							useForce ? '-f' : '',
-							'origin',
-							filterParameters,
-						]),
-					);
-					setPerformedCommands(R.append(pickResultProps(result)));
-				} else if (isOptionActive('reset')) {
-					const useHard = toBoolean(R.path(['reset', 0, 'hard'], states)!);
-					result = await runGitCommand(
-						flattenCompact([
-							'reset',
-							useHard ? '--hard' : '',
-							collectSelfValues(states.reset[0], currentRequestedArgs),
-							buildParametersAndValues(),
-						]),
-					);
-					setPerformedCommands(R.append(pickResultProps(result)));
+					setResultItems(R.append(pickResultProps(result)));
 				} else if (isOptionActive('addInteractive')) {
 					const result = await runGitCommand(['status', '--porcelain']);
 					setAddFilesSectionActive(true);
@@ -618,28 +663,36 @@ export default function App({
 								: 'There is someting new in the remote.'),
 						transformedResult,
 					);
-					setPerformedCommands(R.append(transformedResult));
+					setResultItems(R.append(transformedResult));
+				} else if (isOptionActive('info')) {
+					const result = await getInfo();
+					setResultItems([result]);
+				} else if (isOptionActive('conflicts')) {
+					const result = await getConflictedFiles();
+					setResultItems([result]);
 				} else {
 					const selfValues = collectSelfValues(
-						R.path([R.prop('name', currentCommand!), 0], states),
+						R.path([R.prop('name', currentCommand), 0], states),
 						currentRequestedArgs,
 					);
-					// R.map((argItem: RequestedArgItem) => {
-					// 	const wrt = R.propOr('', argItem.name, states[0]);
-					// 	fs.appendFileSync("C:\\actvt\\_check_res.txt", `${argItem.name}: ${wrt}\n`);
-					// 	return wrt;
-					// }, R.filter(filterHavingKey('mapToSelf'), currentRequestedArgs));
-					// fs.appendFileSync("C:\\actvt\\col.txt", `Pa: ${states.restore[0].path}; ${R.join(',', selfValues)}`);
 
 					const gitArguments = flattenCompact([
-						R.propOr('', 'name', currentCommand!),
-						R.reject(R.compose(R.isEmpty, R.last), buildParametersAndValues()),
+						R.propOr('', 'name', currentCommand),
 						selfValues,
+						collectParameterizedItems(currentRequestedArgs, {
+							states,
+							currentCommand,
+						}),
+						R.reject(rejectLastEmpty, buildParametersAndValues()),
 						R.map(
 							(argItem: RequestedArgItem) =>
 								argItem.mapToRule!(
 									R.path(
-										[R.propOr('', 'name', currentCommand!), 0, argItem.name],
+										[
+											String(R.propOr('', 'name', currentCommand)),
+											0,
+											argItem.name,
+										],
 										states,
 									)!,
 								),
@@ -650,7 +703,7 @@ export default function App({
 						),
 					]);
 					result = await runGitCommand(gitArguments);
-					setPerformedCommands(R.append(pickResultProps(result)));
+					setResultItems(R.append(pickResultProps(result)));
 				}
 
 				/* eslint-enable @typescript-eslint/no-unsafe-argument */
@@ -668,51 +721,12 @@ export default function App({
 			setBlocksStepper(previousStepper => previousStepper.last().dup());
 		}
 	});
-	/* eslint-enable complexity */
+	/* eslint-enable complexity, react-hooks/rules-of-hooks */
 
-	const toBeXedItems = (files: string[], desc: string) => (
-		<Box
-			flexDirection="column"
-			marginRight={2}
-			borderStyle="single"
-			borderColor="#89c3b2"
-		>
-			<Text color="yellow" backgroundColor="black">
-				{desc}
-			</Text>
-			{files.map(file => (
-				<Box key={getId()}>
-					<Text>{file}</Text>
-				</Box>
-			))}
-		</Box>
-	);
-	const selectedFiles = [...addedFiles, ...toUnstageFiles];
-
-	if (R.isEmpty(commands)) {
-		return (
-			<Box>
-				<Text>
-					There {commands.length} is no blocks satisfying specified parameters.
-					Available tags:
-					<Newline />
-					{R.pipe(
-						R.flatten,
-						R.uniq,
-					)(R.map(R.prop('tags'), plainCommands)!).map((command, i) => (
-						<Text
-							key={getId()}
-							color={isEven(i) ? '#cf1578' : '#1e3d59'}
-							backgroundColor={isEven(i) ? '#e8d21d' : '#f5f0e1'}
-						>
-							{command.displayName}
-							<Newline />
-						</Text>
-					))}
-				</Text>
-			</Box>
-		);
-	}
+	let blockCounter = -1;
+	const shouldShowCommands = !R.any((value: number) =>
+		blocksStepper.isCurrent(value),
+	)(R.pluck('number')(R.filter(R.propEq('info', 'name'), commands)));
 
 	return (
 		<Box flexDirection="column">
@@ -734,31 +748,79 @@ export default function App({
 					</Text>
 				)}
 			</Box>
-			{notEmpty(commands) && (
-				<Box flexWrap="wrap">
-					{R.splitEvery(commands.length / 5, commands).map(ha => (
-						<Box key={getId()}>
-							{ha.map(command => (
-								<Box key={getId()} borderColor={getBlockColor(command.id - 1)}>
-									{buildBlock(command)}
-								</Box>
-							))}
-						</Box>
-					))}
-				</Box>
-			)}
+			<Box
+				flexWrap="wrap"
+				flexDirection="row"
+				justifyContent="flex-start"
+				alignItems="center"
+			>
+				{blocksStepper.max > 4 && (
+					<Box>
+						<Text color={blocksStepper.hasPrevious() ? 'green' : 'grey'}>
+							{figures.triangleLeft}
+						</Text>
+						<Text color={blocksStepper.hasPrevious() ? 'green' : 'grey'}>
+							{figures.triangleLeft}
+						</Text>
+						<Text>&nbsp;&nbsp;</Text>
+					</Box>
+				)}
+				{notEmpty(commands) &&
+					R.splitEvery(commands.length / 5, commands).map(ha => {
+						return (
+							<Box key={getId()}>
+								{ha.map(command => {
+									blockCounter++;
+									return (
+										blockCounter >= firstDisplayedCardIndex &&
+										blockCounter <= lastDisplayedCardIndex && (
+											<Box
+												key={getId()}
+												borderColor={getBlockColor(command.id - 1)}
+											>
+												{buildBlock(
+													command,
+													getBlockStatus(
+														blocksStepper.isCurrent(command.id - 1),
+														appStatus,
+														resultItems,
+													),
+												)}
+											</Box>
+										)
+									);
+								})}
+							</Box>
+						);
+					})}
+				{blockCounter > 0 && blocksStepper.max > 4 && (
+					<Box>
+						<Text>&nbsp;&nbsp;</Text>
+						<Text color={blocksStepper.hasNext() ? 'green' : 'grey'}>
+							{figures.triangleRight}
+						</Text>
+						<Text color={blocksStepper.hasNext() ? 'green' : 'grey'}>
+							{figures.triangleRight}
+						</Text>
+					</Box>
+				)}
+			</Box>
 			{appStatus === 'PERFORMED' && (
 				<Box flexDirection="column">
 					<Box flexDirection="column">
-						{performedCommands.length > 0 && <Text>Issued commands:</Text>}
-						{performedCommands.map(commandResult => (
+						{shouldShowCommands && resultItems.length > 0 && (
+							<Text>Issued commands:</Text>
+						)}
+						{resultItems.map(commandResult => (
 							<Box key={getId()} flexDirection="column">
-								<Text>
-									<Text color={getStatusBgColor(commandResult)}>
-										{getFigure(commandResult)}
-									</Text>{' '}
-									{commandResult.command}
-								</Text>
+								{shouldShowCommands ? (
+									<Text>
+										<Text color={getStatusBgColor(commandResult)}>
+											{getFigure(commandResult)}
+										</Text>{' '}
+										{commandResult.command}
+									</Text>
+								) : null}
 								<Text>{commandResult.message}</Text>
 								<Text>{R.repeat('-', process.stdout.columns / 3)}</Text>
 							</Box>
@@ -769,20 +831,18 @@ export default function App({
 								RUNNING
 							</Text>
 						) : (
-							notEmpty(performedCommands) && (
+							notEmpty(resultItems) && (
 								<Text>
 									<Text
-										backgroundColor={getStatusBgColor(
-											R.last(performedCommands)!,
-										)}
+										backgroundColor={getStatusBgColor(R.last(resultItems)!)}
 										color="white"
 									>
-										{R.prop('status', R.last(performedCommands)!)}
+										{R.prop('status', R.last(resultItems)!)}
 									</Text>
 								</Text>
 							)
 						)}
-						{performedCommands.length > 0 && (
+						{resultItems.length > 0 && (
 							<Text>{R.repeat('=', process.stdout.columns / 3)}</Text>
 						)}
 					</Box>

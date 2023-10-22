@@ -1,5 +1,6 @@
 {
 	"extends": "@sindresorhus/tsconfig",
+	"strictFunctionTypes": false,
 	"compilerOptions": {
 		"outDir": "dist"
 	},
