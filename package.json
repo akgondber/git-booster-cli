@@ -1,7 +1,7 @@
 {
 	"name": "git-booster-cli",
 	"description": "Improve your git workflow with customizable and runnable blocks",
-	"version": "2.0.0",
+	"version": "3.0.0",
 	"repository": "https://github.com/akgondber/git-booster-cli",
 	"license": "MIT",
 	"bin": {
@@ -63,6 +63,7 @@
 			"ts": "module",
 			"tsx": "module"
 		},
+		"timeout": "5m",
 		"nodeArguments": [
 			"--loader=ts-node/esm"
 		]

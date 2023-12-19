@@ -64,8 +64,8 @@ const collectParameterizedItems = (
 ) =>
 	R.map(
 		(argItem: RequestedArgItem) => `--${argItem.name}`,
-		R.filter(
-			argItem =>
+		R.filter(argItem => {
+			return (
 				R.has('mapToParam', argItem) &&
 				R.pathSatisfies(
 					toBoolean,
@@ -78,9 +78,9 @@ const collectParameterizedItems = (
 						  ]
 						: [R.propOr('', 'name', currentCommand), 0, argItem.name],
 					states,
-				),
-			requestedArgs,
-		),
+				)
+			);
+		}, requestedArgs),
 	);
 
 const argToPath = (arg: RequestedArgItem): string[] => {

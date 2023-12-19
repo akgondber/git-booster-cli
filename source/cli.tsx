@@ -10,14 +10,14 @@ const cli = meow(
 	  $ git-booster-cli
 
 	Options
-		--all, -a            Display all available blocks
+		--all, -a            Display all available blocks (default behaviour)
 		--only, -o           Display only specified block
 		--compound, -c       Display only blocks with multiple command sets
 		--short-statuses, -s Use short status notations for change types
 		--tag, -t            Display only blocks having specified tags (separated by comma)
 
 	Examples
-	  $ git-booster-cli --all
+	  $ git-booster-cli
 	  $ git-booster-cli --compound
 	  $ git-booster-cli --only addCommitPush
 	  $ git-booster-cli --no-short-statuses
@@ -28,7 +28,7 @@ const cli = meow(
 		flags: {
 			all: {
 				type: 'boolean',
-				default: false,
+				default: true,
 				shortFlag: 'a',
 			},
 			only: {

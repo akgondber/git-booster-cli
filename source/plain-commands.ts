@@ -7,7 +7,7 @@ const plainCommands: BlockItem[] = [
 		name: 'addCommit',
 		displayName: 'add-commit',
 		desc: 'Performs\ngit add -A\ngit commit -m <message>\n',
-		tags: ['commit', 'composed'],
+		tags: ['commit', 'composed', 'compound', 'composite'],
 		namespaced: true,
 		requestedArgs: [
 			{
@@ -61,7 +61,7 @@ const plainCommands: BlockItem[] = [
 		name: 'addCommitPush',
 		displayName: 'add-commit-push',
 		desc: 'Performs \ngit add -A\ngit commit -m <message>\ngit push origin <branch>',
-		tags: ['commit', 'push'],
+		tags: ['commit', 'push', 'compound', 'composite'],
 		namespaced: true,
 		requestedArgs: [
 			{
@@ -272,7 +272,7 @@ const plainCommands: BlockItem[] = [
 		id: 13,
 		name: 'cloneCheckout',
 		displayName: 'clone-checkout',
-		tags: ['clone', 'checkout'],
+		tags: ['clone', 'checkout', 'compound', 'composite'],
 		namespaced: true,
 		requestedArgs: [
 			{
@@ -304,6 +304,85 @@ const plainCommands: BlockItem[] = [
 		displayName: 'files-with-conflicts',
 		tags: ['files', 'ls', 'conflicts'],
 		requestedArgs: [],
+	},
+	{
+		id: 16,
+		name: 'stash',
+		displayName: 'stash',
+		tags: ['stash'],
+		requestedArgs: [
+			{
+				name: 'subcommand',
+				paramName: '',
+				mapToSelf: true,
+				defaultValue: 'push',
+			},
+			{
+				name: 'keep-index',
+				paramName: '',
+				mapToParam: true,
+				excludeFromCommand: true,
+				hideWhenOtherPropertyValueNotIn: ['subcommand', ['', 'push', 'save']],
+			},
+		],
+	},
+	{
+		id: 17,
+		name: 'shortlog',
+		displayName: 'contrib',
+		tags: ['log', 'shortlog', 'author', 'contrib', 'contribution'],
+		requestedArgs: [
+			{
+				name: 'author',
+				paramName: '--author',
+			},
+			{
+				name: 'format',
+				paramName: '',
+				required: true,
+				excludeFromCommand: true,
+				mapToRule(value) {
+					return `--format=${value}`;
+				},
+				defaultValue: '%h %s',
+			},
+		],
+	},
+	{
+		id: 18,
+		name: 'tag',
+		displayName: 'tag',
+		tags: ['tag'],
+		requestedArgs: [
+			{
+				name: 'tagName',
+				paramName: '',
+				mapToSelf: true,
+			},
+			{
+				name: 'delete',
+				paramName: '',
+				excludeFromCommand: true,
+				mapToRule(value) {
+					return toBoolean(value) ? '-d' : undefined;
+				},
+				defaultValue: 'no',
+			},
+			{
+				name: 'annotated',
+				paramName: '-a',
+				excludeFromCommand: true,
+				mapToRule(value) {
+					return toBoolean(value) ? '-a' : undefined;
+				},
+				defaultValue: 'no',
+			},
+			{
+				name: 'message',
+				paramName: '-m',
+				hideWhenOtherPropertyValueIsFalsey: ['annotated'],
+			},
+		],
 	},
 ];
 

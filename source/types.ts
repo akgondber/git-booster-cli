@@ -25,6 +25,7 @@ type ChangedFile = {
 };
 
 type MapFn = (value: string) => string | undefined;
+type CondFn = () => boolean;
 
 type RequestedArgItem = {
 	name: string;
@@ -37,6 +38,11 @@ type RequestedArgItem = {
 	mapToParam?: boolean;
 	skipIfAnyPropIsSet?: string[];
 	defaultValue?: string;
+	hideWhen?: CondFn;
+	hideWhenOtherPropertyValueEq?: [string, any];
+	hideWhenOtherPropertyValueNotEq?: [string, any];
+	hideWhenOtherPropertyValueNotIn?: [string, [string, ...string[]]];
+	hideWhenOtherPropertyValueIsFalsey?: [string];
 };
 
 type BlockItemPlain = {
@@ -57,6 +63,8 @@ type BlockItemCard = BlockItem & {
 
 type AppState = 'WAITING' | 'RUNNING' | 'PERFORMED';
 
+type StateRecord = Record<string, any>;
+
 type Pred<T> = (x: T) => boolean;
 
 export type {
@@ -72,4 +80,5 @@ export type {
 	BlockItemCard,
 	AppState,
 	Pred,
+	StateRecord,
 };

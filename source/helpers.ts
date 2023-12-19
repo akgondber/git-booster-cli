@@ -35,7 +35,11 @@ const getId = (): string => {
 };
 
 const toBoolean = (value: string): boolean => {
-	return R.startsWith('t', value);
+	return R.anyPass([
+		R.flip(R.includes)(['1']),
+		R.startsWith('t'),
+		R.startsWith('y'),
+	])(value);
 };
 
 const notEmpty = (value: any) => !R.isEmpty(value);

@@ -58,6 +58,8 @@ const isFalse = (value: boolean | undefined) => {
 };
 
 const notNilOrFalse = R.both(R.isNil, isFalse);
+const notIncludes = R.complement(R.includes);
+const notEquals = R.complement(R.equals);
 
 export {
 	havingKey,
@@ -67,4 +69,6 @@ export {
 	rejectLastEmpty,
 	isFalse,
 	notNilOrFalse,
+	notIncludes,
+	notEquals,
 };

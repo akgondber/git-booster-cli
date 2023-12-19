@@ -19,7 +19,7 @@ $ git-booster-cli --help
     $ git-booster-cli
 
   Options
-    --all, -a            Display all available blocks
+    --all, -a            Display all available blocks (default behaviour)
     --only, -o           Display only specified block
     --compound, -c       Display only blocks with multiple command sets
     --short-statuses, -s Use short status notations for change types
@@ -39,21 +39,21 @@ $ git-booster-cli --help
 
 ## Screenshots
 
-Launched app with main blocks
-
-```
-git-booster-cli --all
-```
-
-![main-blocks](media/git-booster-cli-screenshot-main-blocks.png)
-
 Launched app with all blocks
 
 ```
-git-booster-cli --all
+git-booster-cli
 ```
 
-![runnable-blocks](media/git-booster-cli-screenshot-all-blocks.png)
+![all-blocks](media/git-booster-cli-screenshot-main-blocks.png)
+
+Launched app blocks with specified tags
+
+```
+git-booster-cli --tag "add,commit,rebase"
+```
+
+![tagged-blocks](media/git-booster-cli-with-specified-tags.png)
 
 Launched app with single block by name
 
@@ -61,7 +61,7 @@ Launched app with single block by name
 git-booster-cli --only add-commit-push
 ```
 
-![runnable-blocks](media/git-booster-cli-screenshot-only-block.png)
+![only-block](media/git-booster-cli-screenshot-only-block.png)
 
 ## License
 

@@ -27,6 +27,7 @@ import {
 	notEmpty,
 	isEven,
 	isNotFalsey,
+	toBoolean,
 } from './helpers.js';
 import {
 	type Props,
@@ -39,9 +40,16 @@ import {
 	type Pred,
 	type CommandStatus,
 	type CommandState,
+	type StateRecord,
 } from './types.js';
 import {getConflictedFiles, getInfo, runGitCommand} from './git-utils.js';
-import {havingKey, prependIf, rejectLastEmpty} from './ramda-utils.js';
+import {
+	havingKey,
+	notEquals,
+	notIncludes,
+	prependIf,
+	rejectLastEmpty,
+} from './ramda-utils.js';
 import {plainCommands} from './plain-commands.js';
 
 /* eslint complexity: ["error", 28] */
@@ -74,7 +82,6 @@ export default function App({
 		R.forEach((requestedArg: RequestedArgItem) => {
 			currentObject = R.set(
 				R.lensPath(
-					// R.ifElse(R.has('path'), R.propOr('', 'path'), R.compose((value: string) => [value], R.propOr('', 'name')))(requestedArg) as string[]
 					prependIf(
 						blockItem.name,
 						R.always(R.propOr(false, 'namespaced', blockItem)),
@@ -114,6 +121,58 @@ export default function App({
 	};
 
 	const focusedStepperEquals = R.equals(focusedItemStepper.value);
+	const argumentIsHidden = (
+		argument: RequestedArgItem,
+		currentCommand: BlockItemCard,
+		states: StateRecord,
+	) => {
+		return (
+			(argument.hideWhenOtherPropertyValueEq &&
+				R.equals(
+					argument.hideWhenOtherPropertyValueEq[1],
+					R.pathOr(
+						'',
+						[currentCommand.name, 0, argument.hideWhenOtherPropertyValueEq[0]],
+						states,
+					),
+				)) ??
+			(argument.hideWhenOtherPropertyValueNotEq &&
+				notEquals(
+					argument.hideWhenOtherPropertyValueNotEq[1],
+					R.pathOr(
+						'',
+						[
+							currentCommand.name,
+							0,
+							argument.hideWhenOtherPropertyValueNotEq[0],
+						],
+						states,
+					),
+				)) ??
+			(argument.hideWhenOtherPropertyValueNotIn &&
+				R.pathSatisfies(
+					a =>
+						notIncludes(
+							a,
+							argument.hideWhenOtherPropertyValueNotIn
+								? argument.hideWhenOtherPropertyValueNotIn[1]
+								: [],
+						),
+					[currentCommand.name, 0, argument.hideWhenOtherPropertyValueNotIn[0]],
+					states,
+				)) ??
+			(argument.hideWhenOtherPropertyValueIsFalsey &&
+				R.pathSatisfies(
+					R.complement(toBoolean),
+					[
+						currentCommand.name,
+						0,
+						argument.hideWhenOtherPropertyValueIsFalsey[0],
+					],
+					states,
+				))
+		);
+	};
 
 	function buildBlock(blockItem: BlockItemCard, commandState: CommandState) {
 		const blockIndex = blockItem.number;
@@ -122,8 +181,8 @@ export default function App({
 		return (
 			<Box borderStyle="round" borderColor={getBlockColor(blockIndex)}>
 				<Box flexDirection="column">
-					<Box>
-						<Text italic color="cyan">
+					<Box justifyContent="center">
+						<Text italic backgroundColor="#2C5F2D" color="#FFE77A">
 							{blockItem.displayName}
 						</Text>
 						<Text>{getBlockStatusFigure(commandState)}</Text>
@@ -135,59 +194,71 @@ export default function App({
 						: null}
 					<Spacer />
 					{!R.isEmpty(blockItem.requestedArgs) && (
-						<Text>
-							<Newline />
-							Parameters:
-						</Text>
-					)}
-					{blockItem.requestedArgs.map((arg, i) => (
-						<Box key={getId()}>
-							<Text
-								color={
-									isCurrentBlock
-										? R.has(arg.name, erroredFields)
-											? 'red'
-											: focusedStepperEquals(i)
-											? 'cyan'
-											: 'grey'
-										: 'grey'
-								}
-								bold={isCurrentBlock}
-								underline={isCurrentBlock}
-							>
-								{arg.name}
+						<Box justifyContent="center">
+							<Text>
+								<Newline />
+								<Text italic color="#101820" backgroundColor="#fee715">
+									{' '}
+									Parameters{' '}
+								</Text>
+								<Newline />
 							</Text>
-							<Text>: </Text>
-							<TextInput
-								focus={isCurrentBlock && focusedStepperEquals(i)}
-								value={String(
-									R.pathOr(
-										'',
-										prependNameValueIfNamespaced(blockItem, argToPath(arg)),
-										getCurrentParameters(getCommandValue(), states),
-									)!,
-								)}
-								onChange={value => {
-									const statePair: any[] = R.propOr([], blockItem.name, states);
-									let pathValue: string[] = R.propOr([arg.name], 'path', arg);
-									pathValue = prependNameValueIfNamespaced(
-										blockItem,
-										pathValue,
-									);
-
-									if (R.has(arg.name, erroredFields) && !R.isEmpty(value)) {
-										setErroredFields(R.omit([arg.name]));
-									}
-
-									/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
-									statePair[1]((previousValue: any) => {
-										return R.set(R.lensPath(pathValue), value, previousValue);
-									});
-									/* eslint-enable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
-								}}
-							/>
 						</Box>
-					))}
+					)}
+					{blockItem.requestedArgs.map((arg, i) =>
+						argumentIsHidden(arg, blockItem, states) ? null : (
+							<Box key={getId()}>
+								<Text
+									color={
+										isCurrentBlock
+											? R.has(arg.name, erroredFields)
+												? 'red'
+												: focusedStepperEquals(i)
+												? 'cyan'
+												: 'grey'
+											: 'grey'
+									}
+									bold={isCurrentBlock}
+									underline={isCurrentBlock}
+								>
+									{arg.name}
+								</Text>
+								<Text>: </Text>
+								<TextInput
+									focus={isCurrentBlock && focusedStepperEquals(i)}
+									value={String(
+										R.pathOr(
+											'',
+											prependNameValueIfNamespaced(blockItem, argToPath(arg)),
+											getCurrentParameters(getCommandValue(), states),
+										)!,
+									)}
+									onChange={value => {
+										const statePair: any[] = R.propOr(
+											[],
+											blockItem.name,
+											states,
+										);
+										let pathValue: string[] = R.propOr([arg.name], 'path', arg);
+										pathValue = prependNameValueIfNamespaced(
+											blockItem,
+											pathValue,
+										);
+
+										if (R.has(arg.name, erroredFields) && !R.isEmpty(value)) {
+											setErroredFields(R.omit([arg.name]));
+										}
+
+										/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
+										statePair[1]((previousValue: any) => {
+											return R.set(R.lensPath(pathValue), value, previousValue);
+										});
+										/* eslint-enable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
+									}}
+								/>
+							</Box>
+						),
+					)}
 					<Newline />
 					<Spacer />
 					{isCurrentBlock && (
@@ -491,7 +562,6 @@ export default function App({
 			} else if (key.rightArrow || key.leftArrow) {
 				setAppStatus('WAITING');
 				setAddFilesSectionActive(false);
-
 				setErroredFields({});
 				const newBlocksStepper = (
 					key.rightArrow ? blocksStepper.next() : blocksStepper.previous()
@@ -521,6 +591,7 @@ export default function App({
 			const newBlocksStepper = (
 				key.rightArrow ? blocksStepper.next() : blocksStepper.previous()
 			).dup();
+
 			if (newBlocksStepper.value === 0) {
 				setFirstDisplayedCardIndex(0);
 				setLastDisplayedCardIndex(
@@ -557,10 +628,15 @@ export default function App({
 			}
 		} else if (key.return) {
 			if (focusedStepperEquals(currentRequestedArgs.length)) {
+				const acceptableRequestedArgs = R.filter(
+					a => !argumentIsHidden(a, currentCommand, states),
+					currentRequestedArgs,
+				);
+
 				if (
 					R.any(
 						R.both(isRequired, R.pipe(getStateValue, notFilled)),
-						currentRequestedArgs,
+						acceptableRequestedArgs,
 					)
 				) {
 					// eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -582,7 +658,7 @@ export default function App({
 								isRequired,
 								R.pipe(getStateValue, notFilled),
 							),
-							currentRequestedArgs,
+							acceptableRequestedArgs,
 						),
 					);
 					return;
@@ -675,11 +751,12 @@ export default function App({
 						R.path([R.prop('name', currentCommand), 0], states),
 						currentRequestedArgs,
 					);
+					const propEqContrib = R.propEq('shortlog', 'name');
 
 					const gitArguments = flattenCompact([
-						R.propOr('', 'name', currentCommand),
+						R.prop('name', currentCommand),
 						selfValues,
-						collectParameterizedItems(currentRequestedArgs, {
+						collectParameterizedItems(acceptableRequestedArgs, {
 							states,
 							currentCommand,
 						}),
@@ -698,11 +775,22 @@ export default function App({
 								),
 							R.filter(
 								argItem => R.has('mapToRule', argItem),
-								currentRequestedArgs,
+								acceptableRequestedArgs,
 							),
 						),
 					]);
-					result = await runGitCommand(gitArguments);
+
+					result = await runGitCommand(
+						gitArguments,
+						propEqContrib(currentCommand)
+							? {
+									// Provide stdio param since child_process hangs when calling shortlog
+									// See: https://stackoverflow.com/questions/44439285/node-child-process-spawn-hangs-when-calling-git-shortlog-sn
+									stdio: ['inherit', 'pipe', 'pipe'],
+							  }
+							: undefined,
+					);
+
 					setResultItems(R.append(pickResultProps(result)));
 				}
 
@@ -766,10 +854,10 @@ export default function App({
 					</Box>
 				)}
 				{notEmpty(commands) &&
-					R.splitEvery(commands.length / 5, commands).map(ha => {
+					R.splitEvery(commands.length / 5, commands).map(items => {
 						return (
 							<Box key={getId()}>
-								{ha.map(command => {
+								{items.map(command => {
 									blockCounter++;
 									return (
 										blockCounter >= firstDisplayedCardIndex &&

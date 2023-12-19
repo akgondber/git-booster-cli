@@ -14,6 +14,7 @@ const safeExecuteCommand = async (
 	const command = getGitCommand(args);
 	try {
 		const {stdout} = await execa(commandString, args, options);
+
 		return {
 			command,
 			message: stdout,
