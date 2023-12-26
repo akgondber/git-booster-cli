@@ -39,15 +39,15 @@ $ git-booster-cli --help
 
 ## Screenshots
 
-Launched app with all blocks
+### Launched app with all blocks
 
 ```
 git-booster-cli
 ```
 
-![all-blocks](media/git-booster-cli-screenshot-main-blocks.png)
+![all-blocks](media/git-booster-cli-screenshot-all-blocks.png)
 
-Launched app blocks with specified tags
+### Launched app blocks with specified tags
 
 ```
 git-booster-cli --tag "add,commit,rebase"
@@ -55,13 +55,17 @@ git-booster-cli --tag "add,commit,rebase"
 
 ![tagged-blocks](media/git-booster-cli-with-specified-tags.png)
 
-Launched app with single block by name
+### Launched app with single block by name
 
 ```
 git-booster-cli --only add-commit-push
 ```
 
 ![only-block](media/git-booster-cli-screenshot-only-block.png)
+
+### Performed add-commit-push block example
+
+![performed-block-example](media/git-booster-cli-performed-block-example.png)
 
 ## License
 

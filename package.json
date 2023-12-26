@@ -1,7 +1,7 @@
 {
 	"name": "git-booster-cli",
 	"description": "Improve your git workflow with customizable and runnable blocks",
-	"version": "3.0.0",
+	"version": "3.0.1",
 	"repository": "https://github.com/akgondber/git-booster-cli",
 	"license": "MIT",
 	"bin": {
