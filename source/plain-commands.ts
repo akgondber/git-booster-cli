@@ -384,6 +384,13 @@ const plainCommands: BlockItem[] = [
 			},
 		],
 	},
+	{
+		id: 19,
+		name: 'show-tree',
+		displayName: 'show-tree',
+		tags: ['log', 'show-tree', 'showtree', 'simplifybydecoration'],
+		requestedArgs: [],
+	},
 ];
 
 export {plainCommands};

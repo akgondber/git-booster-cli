@@ -746,6 +746,16 @@ export default function App({
 				} else if (isOptionActive('conflicts')) {
 					const result = await getConflictedFiles();
 					setResultItems([result]);
+				} else if (isOptionActive('show-tree')) {
+					const result = await runGitCommand([
+						'log',
+						'--all',
+						'--graph',
+						'--decorate',
+						'--oneline',
+						'--simplify-by-decoration',
+					]);
+					setResultItems([result]);
 				} else {
 					const selfValues = collectSelfValues(
 						R.path([R.prop('name', currentCommand), 0], states),
