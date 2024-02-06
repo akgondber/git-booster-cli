@@ -14,6 +14,7 @@ import {
 	collectParametersValuesPipe,
 	getBlockStatus,
 	getCurrentParameters,
+	getParameterValue,
 	getRepoName,
 	getStateValueByKey,
 	getStateValueByKeyNamespaced,
@@ -59,6 +60,7 @@ export default function App({
 	isOnlyBlock = undefined,
 	isOnlyCompound = undefined,
 	isShortStatuses = true,
+	isShowDescriptions = false,
 	tags,
 }: Props) {
 	const [appStatus, setAppStatus] = useState<AppState>('WAITING');
@@ -187,7 +189,7 @@ export default function App({
 						</Text>
 						<Text>{getBlockStatusFigure(commandState)}</Text>
 					</Box>
-					{blockItem.desc
+					{isShowDescriptions && blockItem.desc
 						? blockItem.desc
 								.split('\n')
 								.map(txt => <Text key={getId()}>{txt}</Text>)
@@ -321,6 +323,7 @@ export default function App({
 
 		const gitArguments: string[] = flattenCompact([
 			commandName,
+			R.equals(currentCommand.name, 'addCommitTagPush') ? '--atomic' : null,
 			selfValues,
 			collectParameterizedItems(currentRequestedArgs, {
 				states,
@@ -697,6 +700,33 @@ export default function App({
 						states,
 					);
 					setResultItems(R.append(pickResultProps(result)));
+				} else if (isOptionActive('addCommitTagPush')) {
+					result = await runGitCommand(['add', '-A']);
+					setResultItems(R.append(pickResultProps(result)));
+
+					result = await runGitCommand(
+						R.flatten(['commit', buildParametersAndValuesFor('commit')]),
+					);
+					setResultItems(R.append(pickResultProps(result)));
+
+					result = await runGitCommand(
+						R.flatten([
+							'tag',
+							getParameterValue(
+								currentCommand,
+								R.find(R.propEq('tag', 'name'), currentCommand.requestedArgs)!,
+								states,
+							),
+						]),
+					);
+					setResultItems(R.append(pickResultProps(result)));
+
+					result = await runGitCommandNamespaced(
+						'push',
+						currentCommand,
+						states,
+					);
+					setResultItems(R.append(pickResultProps(result)));
 				} else if (isOptionActive('cloneCheckout')) {
 					result = await runGitCommandNamespaced(
 						'clone',
@@ -747,13 +777,49 @@ export default function App({
 					const result = await getConflictedFiles();
 					setResultItems([result]);
 				} else if (isOptionActive('show-tree')) {
+					const count = getParameterValue(
+						currentCommand,
+						R.find(R.propEq('count', 'name'), currentCommand.requestedArgs)!,
+						states,
+					);
+					const initialArgs = ['log'];
+
+					if (count) initialArgs.push('-n', count);
+
 					const result = await runGitCommand([
-						'log',
+						...initialArgs,
 						'--all',
 						'--graph',
 						'--decorate',
 						'--oneline',
 						'--simplify-by-decoration',
+						'--color=always',
+						'--format=%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(auto)%d%C(reset)',
+					]);
+					setResultItems([result]);
+				} else if (isOptionActive('git-recent')) {
+					const count = getParameterValue(
+						currentCommand,
+						R.find(R.propEq('count', 'name'), currentCommand.requestedArgs)!,
+						states,
+					);
+					const initialArgs = [
+						'for-each-ref',
+						'--color=always',
+						'--sort=committerdate',
+					];
+					if (count) initialArgs.push(`--count=${count}`);
+					const result = await runGitCommand([
+						...initialArgs,
+						[
+							'--format=%(HEAD)',
+							'%(refname:short)',
+							'%(color:bold red)%(objectname:short)%(color:reset)',
+							'%(color:bold green)(%(committerdate:relative))%(color:reset)',
+							'%(color:bold blue)%(authorname)%(color:reset)',
+							'%(color:yellow)%(upstream:track)%(color:reset)',
+							'%(contents:subject)',
+						].join(' '),
 					]);
 					setResultItems([result]);
 				} else {
@@ -874,12 +940,16 @@ export default function App({
 										blockCounter <= lastDisplayedCardIndex && (
 											<Box
 												key={getId()}
-												borderColor={getBlockColor(command.id - 1)}
+												borderColor={getBlockColor(
+													R.findIndex(R.equals(command), commands) - 1,
+												)}
 											>
 												{buildBlock(
 													command,
 													getBlockStatus(
-														blocksStepper.isCurrent(command.id - 1),
+														blocksStepper.isCurrent(
+															R.findIndex(R.equals(command), commands) - 1,
+														),
 														appStatus,
 														resultItems,
 													),
@@ -919,6 +989,7 @@ export default function App({
 										{commandResult.command}
 									</Text>
 								) : null}
+								<Text> </Text>
 								<Text>{commandResult.message}</Text>
 								<Text>{R.repeat('-', process.stdout.columns / 3)}</Text>
 							</Box>

@@ -2,6 +2,7 @@ type Props = {
 	readonly isOnlyMain?: boolean;
 	readonly isOnlyBlock?: string;
 	readonly isShortStatuses?: boolean;
+	readonly isShowDescriptions?: boolean;
 	tags?: string;
 	isOnlyCompound?: boolean;
 };
@@ -45,7 +46,7 @@ type RequestedArgItem = {
 	hideWhenOtherPropertyValueIsFalsey?: [string];
 };
 
-type BlockItemPlain = {
+type BlockItem = {
 	name: string;
 	displayName: string;
 	requestedArgs: RequestedArgItem[];
@@ -54,9 +55,6 @@ type BlockItemPlain = {
 	namespaced?: boolean;
 };
 
-type BlockItem = BlockItemPlain & {
-	id: number;
-};
 type BlockItemCard = BlockItem & {
 	number: number;
 };
@@ -75,7 +73,6 @@ export type {
 	CommandResult,
 	ChangedFile,
 	RequestedArgItem,
-	BlockItemPlain,
 	BlockItem,
 	BlockItemCard,
 	AppState,

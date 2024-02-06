@@ -3,7 +3,6 @@ import {type BlockItem} from './types.js';
 
 const plainCommands: BlockItem[] = [
 	{
-		id: 1,
 		name: 'addCommit',
 		displayName: 'add-commit',
 		desc: 'Performs\ngit add -A\ngit commit -m <message>\n',
@@ -15,7 +14,7 @@ const plainCommands: BlockItem[] = [
 				paramName: '-m',
 				path: ['commit', 'message'],
 				required: true,
-				defaultValue: 'Added ',
+				defaultValue: 'Add ',
 			},
 			{
 				name: 'quiet',
@@ -28,7 +27,6 @@ const plainCommands: BlockItem[] = [
 		],
 	},
 	{
-		id: 2,
 		name: 'push',
 		displayName: 'push',
 		desc: 'Performs\ngit push origin <branch>',
@@ -57,7 +55,6 @@ const plainCommands: BlockItem[] = [
 		],
 	},
 	{
-		id: 3,
 		name: 'addCommitPush',
 		displayName: 'add-commit-push',
 		desc: 'Performs \ngit add -A\ngit commit -m <message>\ngit push origin <branch>',
@@ -69,7 +66,7 @@ const plainCommands: BlockItem[] = [
 				required: true,
 				path: ['commit', 'message'],
 				paramName: '-m',
-				defaultValue: 'Added ',
+				defaultValue: 'Add ',
 			},
 			{
 				name: 'remote',
@@ -91,7 +88,47 @@ const plainCommands: BlockItem[] = [
 		],
 	},
 	{
-		id: 4,
+		name: 'addCommitTagPush',
+		displayName: 'add-commit-tag-push',
+		desc: 'Performs \ngit add -A\ngit commit -m <message>\ngit tag <tag>\ngit push --atomic <remote> <branch> <tag>',
+		tags: ['commit', 'push', 'compound', 'composite'],
+		namespaced: true,
+		requestedArgs: [
+			{
+				name: 'message',
+				required: true,
+				path: ['commit', 'message'],
+				paramName: '-m',
+				defaultValue: 'Add ',
+			},
+			{
+				name: 'remote',
+				path: ['push', 'remote'],
+				paramName: '',
+				required: true,
+				excludeFromCommand: true,
+				mapToSelf: true,
+				defaultValue: 'origin',
+			},
+			{
+				name: 'branch',
+				path: ['push', 'branch'],
+				excludeFromCommand: true,
+				mapToSelf: true,
+				paramName: '',
+				defaultValue: 'main',
+			},
+			{
+				name: 'tag',
+				path: ['push', 'tag'],
+				paramName: '',
+				required: true,
+				excludeFromCommand: true,
+				mapToSelf: true,
+			},
+		],
+	},
+	{
 		name: 'log',
 		displayName: 'log',
 		tags: ['log'],
@@ -136,7 +173,6 @@ const plainCommands: BlockItem[] = [
 		],
 	},
 	{
-		id: 5,
 		name: 'diff',
 		displayName: 'diff',
 		tags: ['diff'],
@@ -149,7 +185,6 @@ const plainCommands: BlockItem[] = [
 		],
 	},
 	{
-		id: 6,
 		name: 'status',
 		displayName: 'status',
 		tags: ['status'],
@@ -164,21 +199,18 @@ const plainCommands: BlockItem[] = [
 		],
 	},
 	{
-		id: 7,
 		name: 'addInteractive',
 		displayName: 'add-interactive',
 		tags: ['add', 'interactive'],
 		requestedArgs: [],
 	},
 	{
-		id: 8,
 		name: 'checkUpdates',
 		displayName: 'check-updates',
 		tags: ['remote', 'check', 'uptodate'],
 		requestedArgs: [],
 	},
 	{
-		id: 9,
 		name: 'reset',
 		displayName: 'reset',
 		tags: ['reset'],
@@ -201,7 +233,6 @@ const plainCommands: BlockItem[] = [
 		],
 	},
 	{
-		id: 10,
 		name: 'restore',
 		displayName: 'restore',
 		tags: ['restore'],
@@ -217,7 +248,6 @@ const plainCommands: BlockItem[] = [
 		],
 	},
 	{
-		id: 11,
 		name: 'rebase',
 		displayName: 'rebase',
 		tags: ['rebase'],
@@ -249,7 +279,6 @@ const plainCommands: BlockItem[] = [
 		],
 	},
 	{
-		id: 12,
 		name: 'commit',
 		displayName: 'commit',
 		tags: ['commit'],
@@ -264,12 +293,11 @@ const plainCommands: BlockItem[] = [
 			{
 				name: 'message',
 				paramName: '-m',
-				defaultValue: 'Added ',
+				defaultValue: 'Add ',
 			},
 		],
 	},
 	{
-		id: 13,
 		name: 'cloneCheckout',
 		displayName: 'clone-checkout',
 		tags: ['clone', 'checkout', 'compound', 'composite'],
@@ -292,21 +320,18 @@ const plainCommands: BlockItem[] = [
 		],
 	},
 	{
-		id: 14,
 		name: 'info',
 		displayName: 'info',
 		tags: ['info', 'misc'],
 		requestedArgs: [],
 	},
 	{
-		id: 15,
 		name: 'conflicts',
 		displayName: 'files-with-conflicts',
 		tags: ['files', 'ls', 'conflicts'],
 		requestedArgs: [],
 	},
 	{
-		id: 16,
 		name: 'stash',
 		displayName: 'stash',
 		tags: ['stash'],
@@ -327,7 +352,6 @@ const plainCommands: BlockItem[] = [
 		],
 	},
 	{
-		id: 17,
 		name: 'shortlog',
 		displayName: 'contrib',
 		tags: ['log', 'shortlog', 'author', 'contrib', 'contribution'],
@@ -349,7 +373,6 @@ const plainCommands: BlockItem[] = [
 		],
 	},
 	{
-		id: 18,
 		name: 'tag',
 		displayName: 'tag',
 		tags: ['tag'],
@@ -385,11 +408,30 @@ const plainCommands: BlockItem[] = [
 		],
 	},
 	{
-		id: 19,
 		name: 'show-tree',
 		displayName: 'show-tree',
 		tags: ['log', 'show-tree', 'showtree', 'simplifybydecoration'],
-		requestedArgs: [],
+		requestedArgs: [
+			{
+				name: 'count',
+				path: ['show', 'count'],
+				paramName: '',
+				excludeFromCommand: true,
+			},
+		],
+	},
+	{
+		name: 'git-recent',
+		displayName: 'git-recent',
+		tags: ['log', 'foreachref', 'contrib', 'activity'],
+		requestedArgs: [
+			{
+				name: 'count',
+				path: ['reset', 'count'],
+				paramName: '',
+				excludeFromCommand: true,
+			},
+		],
 	},
 ];
 
