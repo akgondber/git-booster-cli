@@ -540,13 +540,13 @@ export default function App({
 					[selectFilesPanelStepper!.value, 'name'],
 					availableToAddFiles,
 				);
-				const stagedAvailabileFiles = R.filter(
+				const stagedAvailableFiles = R.filter(
 					R.propEq(true, 'staged'),
 					availableToAddFiles,
 				);
 				const notStagedAvailableFiles = R.difference(
 					availableToAddFiles,
-					stagedAvailabileFiles,
+					stagedAvailableFiles,
 				);
 
 				if (R.includes(currentItem, addedFiles)) {
@@ -567,7 +567,7 @@ export default function App({
 						a =>
 							R.equals(a.name, currentItem) &&
 							R.not(R.includes(currentItem, toUnstageFiles)),
-						stagedAvailabileFiles,
+						stagedAvailableFiles,
 					)
 				) {
 					setToUnstageFiles(R.append(currentItem));
@@ -827,7 +827,7 @@ export default function App({
 							' ' +
 							(value === ''
 								? 'There is no updates in the remote.'
-								: 'There is someting new in the remote.'),
+								: 'There is something new in the remote.'),
 						transformedResult,
 					);
 					setResultItems(R.append(transformedResult));
