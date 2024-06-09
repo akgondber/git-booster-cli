@@ -45,7 +45,7 @@ import {
 } from './types.js';
 import {getConflictedFiles, getInfo, runGitCommand} from './git-utils.js';
 import {
-	havingKey,
+	havingTrueKey,
 	notEquals,
 	notIncludes,
 	prependIf,
@@ -74,8 +74,8 @@ export default function App({
 		isOnlyCompound,
 		isOnlyMain,
 		tags,
-	}).map((item: BlockItem, idx: number) => {
-		return R.mergeLeft({number: idx}, item);
+	}).map((item: BlockItem, index: number) => {
+		return R.mergeLeft({number: index}, item);
 	});
 	let states: Record<string, any> = {};
 
@@ -216,8 +216,8 @@ export default function App({
 											? R.has(arg.name, erroredFields)
 												? 'red'
 												: focusedStepperEquals(i)
-												? 'cyan'
-												: 'grey'
+													? 'cyan'
+													: 'grey'
 											: 'grey'
 									}
 									bold={isCurrentBlock}
@@ -228,12 +228,10 @@ export default function App({
 								<Text>: </Text>
 								<TextInput
 									focus={isCurrentBlock && focusedStepperEquals(i)}
-									value={String(
-										R.pathOr(
-											'',
-											prependNameValueIfNamespaced(blockItem, argToPath(arg)),
-											getCurrentParameters(getCommandValue(), states),
-										)!,
+									value={R.pathOr(
+										'',
+										prependNameValueIfNamespaced(blockItem, argToPath(arg)),
+										getCurrentParameters(getCommandValue(), states),
 									)}
 									onChange={value => {
 										const statePair: any[] = R.propOr(
@@ -251,11 +249,11 @@ export default function App({
 											setErroredFields(R.omit([arg.name]));
 										}
 
-										/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
+										/* eslint-disable @typescript-eslint/no-unsafe-return */
 										statePair[1]((previousValue: any) => {
 											return R.set(R.lensPath(pathValue), value, previousValue);
 										});
-										/* eslint-enable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
+										/* eslint-enable @typescript-eslint/no-unsafe-return */
 									}}
 								/>
 							</Box>
@@ -320,16 +318,55 @@ export default function App({
 	): Promise<CommandResult> => {
 		const commitState = getSubState(currentCommand, states, commandName);
 		const selfValues = collectSelfValues(commitState, currentRequestedArgs);
+		const parameterizedItems = collectParameterizedItems(currentRequestedArgs, {
+			states,
+			currentCommand,
+		});
+		/* eslint-disable unicorn/prevent-abbreviations */
+		const paramsAndValues = R.reject(
+			rejectLastEmpty,
+			buildParametersAndValuesFor(commandName),
+		);
+		/* eslint-enable unicorn/prevent-abbreviations */
 
 		const gitArguments: string[] = flattenCompact([
 			commandName,
 			R.equals(currentCommand.name, 'addCommitTagPush') ? '--atomic' : null,
 			selfValues,
-			collectParameterizedItems(currentRequestedArgs, {
-				states,
-				currentCommand,
-			}),
-			R.reject(rejectLastEmpty, buildParametersAndValuesFor(commandName)),
+			parameterizedItems,
+			paramsAndValues,
+		]);
+		const result = await runGitCommand(gitArguments, options);
+		return result;
+	};
+
+	/* eslint max-params: ["error", 5] */
+	const runGitCommandSubcommandNamespaced = async (
+		commandName: string,
+		subcommandName: string,
+		currentCommand: BlockItemCard,
+		states: Record<string, any>,
+		options?: Options,
+	): Promise<CommandResult> => {
+		const commitState = getSubState(currentCommand, states, commandName);
+		const selfValues = collectSelfValues(commitState, currentRequestedArgs);
+		const parameterizedItems = collectParameterizedItems(currentRequestedArgs, {
+			states,
+			currentCommand,
+		});
+		/* eslint-disable unicorn/prevent-abbreviations */
+		const paramsAndValues = R.reject(
+			rejectLastEmpty,
+			buildParametersAndValuesFor(commandName),
+		);
+		/* eslint-enable unicorn/prevent-abbreviations */
+		const gitArguments: string[] = flattenCompact([
+			commandName,
+			subcommandName,
+			R.equals(currentCommand.name, 'addCommitTagPush') ? '--atomic' : null,
+			selfValues,
+			parameterizedItems,
+			paramsAndValues,
 		]);
 		const result = await runGitCommand(gitArguments, options);
 		return result;
@@ -369,7 +406,7 @@ export default function App({
 		const getChangeTags = (changesFlags: string[]): string[] => {
 			if (changesFlags.length === 2) {
 				const statusShortKey = R.nth(1, changesFlags)!;
-				return [R.propOr('', statusShortKey, shortFlagsMapping)!];
+				return [R.propOr('', statusShortKey, shortFlagsMapping)];
 			}
 
 			if (changesFlags[0] === '??') {
@@ -409,7 +446,7 @@ export default function App({
 					{R.pipe(
 						R.flatten,
 						R.uniq,
-					)(R.map(R.propOr([], 'tags'), plainCommands)!).map((tagName, i) => (
+					)(R.map(R.propOr([], 'tags'), plainCommands)).map((tagName, i) => (
 						<Text
 							key={getId()}
 							color={isEven(i) ? '#cf1578' : '#1e3d59'}
@@ -435,7 +472,7 @@ export default function App({
 	};
 
 	const currentCommand: BlockItemCard = getCommandValue();
-	const currentRequestedArgs = R.prop('requestedArgs', currentCommand)!;
+	const currentRequestedArgs = R.prop('requestedArgs', currentCommand);
 
 	const isRequired = (requestedArgItem: RequestedArgItem): boolean => {
 		return R.prop('required', requestedArgItem) === true;
@@ -449,7 +486,7 @@ export default function App({
 			(argItem: RequestedArgItem) =>
 				R.pathOr('', argToPath(argItem), stateObject),
 			R.filter(
-				havingKey('mapToSelf'),
+				havingTrueKey('mapToSelf'),
 				R.reject((argItem: RequestedArgItem) => {
 					return (
 						R.has('skipIfAnyPropIsSet', argItem) &&
@@ -494,7 +531,7 @@ export default function App({
 					const newStepper = key.downArrow
 						? previousStepper!.next()
 						: previousStepper!.previous();
-					return newStepper.dup()!;
+					return newStepper.dup();
 				});
 			}
 
@@ -727,9 +764,33 @@ export default function App({
 						states,
 					);
 					setResultItems(R.append(pickResultProps(result)));
+				} else if (isOptionActive('setup')) {
+					result = await runGitCommand(['init']);
+					setResultItems(R.append(pickResultProps(result)));
+
+					result = await runGitCommand(['add', '-A']);
+					setResultItems(R.append(pickResultProps(result)));
+
+					result = await runGitCommandNamespaced(
+						'commit',
+						currentCommand,
+						states,
+					);
+					setResultItems(R.append(pickResultProps(result)));
+
+					result = await runGitCommand(['branch', '-M', 'main']);
+					setResultItems(R.append(pickResultProps(result)));
+
+					result = await runGitCommandSubcommandNamespaced(
+						'remote',
+						'add',
+						currentCommand,
+						states,
+					);
+					setResultItems(R.append(pickResultProps(result)));
 				} else if (isOptionActive('cloneCheckout')) {
 					result = await runGitCommandNamespaced(
-						'clone',
+						'remote',
 						currentCommand,
 						states,
 					);
@@ -847,7 +908,7 @@ export default function App({
 											argItem.name,
 										],
 										states,
-									)!,
+									),
 								),
 							R.filter(
 								argItem => R.has('mapToRule', argItem),
@@ -863,7 +924,7 @@ export default function App({
 									// Provide stdio param since child_process hangs when calling shortlog
 									// See: https://stackoverflow.com/questions/44439285/node-child-process-spawn-hangs-when-calling-git-shortlog-sn
 									stdio: ['inherit', 'pipe', 'pipe'],
-							  }
+								}
 							: undefined,
 					);
 
@@ -1020,7 +1081,7 @@ export default function App({
 								<Box>
 									<Text>There is no any changes in current branch.</Text>
 								</Box>
-						  )
+							)
 						: addFilesSectionActive && (
 								<Box flexDirection="column">
 									<Box flexDirection="column">
@@ -1049,8 +1110,8 @@ export default function App({
 																selectFilesPanelStepper!.isCurrent(i)
 																	? 'cyan'
 																	: R.includes(item.name, selectedFiles)
-																	? 'green'
-																	: ''
+																		? 'green'
+																		: ''
 															}
 														>
 															<Text>
@@ -1116,7 +1177,7 @@ export default function App({
 										</Box>
 									</Box>
 								</Box>
-						  )}
+							)}
 				</Box>
 			)}
 			{appStatus === 'WAITING' && (

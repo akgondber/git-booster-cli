@@ -1,0 +1,92 @@
+{
+	"2024-03-02": [
+		{
+			"name": "ramda",
+			"message": "Your local install is out of date. https://ramdajs.com/",
+			"command": "npm install ramda@0.29.1 --save",
+			"operation": "update",
+			"info": "npm install ramda@0.29.1 --save to go from 0.29.0 to 0.29.1"
+		},
+		{
+			"name": "@types/ramda",
+			"message": "Your local install is out of date. https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/ramda",
+			"command": "npm install @types/ramda@0.29.11 --save-dev",
+			"operation": "update",
+			"info": "npm install @types/ramda@0.29.11 --save-dev to go from 0.29.4 to 0.29.11"
+		},
+		{
+			"name": "eslint-config-xo-react",
+			"message": "Still using eslint-config-xo-react?",
+			"command": "npm uninstall eslint-config-xo-react --save-dev",
+			"operation": "delete",
+			"info": "To remove this package: npm uninstall eslint-config-xo-react --save-dev"
+		},
+		{
+			"name": "ts-node",
+			"message": "Your local install is out of date. https://typestrong.org/ts-node",
+			"command": "npm uninstall ts-node --save-dev",
+			"operation": "delete",
+			"info": "To remove this package: npm uninstall ts-node --save-dev"
+		},
+		{
+			"name": "@types/uuid",
+			"message": "Your local install is out of date. https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/uuid",
+			"command": "npm install @types/uuid@9.0.8 --save-dev",
+			"operation": "update",
+			"info": "npm install @types/uuid@9.0.8 --save-dev to go from 9.0.5 to 9.0.8"
+		},
+		{
+			"name": "@sindresorhus/tsconfig",
+			"message": "Major update available. https://github.com/sindresorhus/tsconfig#readme",
+			"command": "npm install @sindresorhus/tsconfig@5.0.0 --save-dev",
+			"operation": "update",
+			"info": "npm install @sindresorhus/tsconfig@5.0.0 --save-dev to go from 4.0.0 to 5.0.0"
+		},
+		{
+			"name": "prettier",
+			"message": "Your local install is out of date. https://prettier.io",
+			"command": "npm install prettier@3.2.5 --save-dev",
+			"operation": "update",
+			"info": "npm install prettier@3.2.5 --save-dev to go from 3.0.3 to 3.2.5"
+		},
+		{
+			"name": "xo",
+			"message": "NonSemver update available. https://github.com/xojs/xo#readme",
+			"command": "npm install xo@0.57.0 --save-dev",
+			"operation": "update",
+			"info": "npm install xo@0.57.0 --save-dev to go from 0.56.0 to 0.57.0"
+		},
+		{
+			"name": "gitmoji-cli",
+			"message": "Major update available. https://github.com/carloscuesta/gitmoji-cli#readme",
+			"command": "npm install --global gitmoji-cli@9.1.0 --save",
+			"operation": "update",
+			"info": "npm install --global gitmoji-cli@9.1.0 --save to go from 8.2.0 to 9.1.0"
+		},
+		{
+			"name": "terminalizer",
+			"message": "NonSemver update available. https://www.terminalizer.com",
+			"command": "npm install --global terminalizer@0.11.0 --save",
+			"operation": "update",
+			"info": "npm install --global terminalizer@0.11.0 --save to go from 0.9.0 to 0.11.0"
+		}
+	],
+	"2024-06-02": [
+		{
+			"name": "ava",
+			"message": "Major update available. https://avajs.dev",
+			"command": "npm install ava@6.1.3 --save-dev",
+			"operation": "update",
+			"info": "npm install ava@6.1.3 --save-dev to go from 5.3.1 to 6.1.3"
+		}
+	],
+	"2024-06-06": [
+		{
+			"name": "ava",
+			"message": "Major update available. https://avajs.dev",
+			"command": "npm install ava@6.1.3 --save-dev",
+			"operation": "update",
+			"info": "npm install ava@6.1.3 --save-dev to go from 5.2.0 to 6.1.3"
+		}
+	]
+}

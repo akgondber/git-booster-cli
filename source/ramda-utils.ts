@@ -3,6 +3,10 @@ import * as R from 'ramda';
 const havingKey = R.curry((key: string, source: any): boolean =>
 	R.has(key, source),
 );
+const havingTrueKey = R.curry(
+	(key: string, source: any): boolean =>
+		R.has(key, source) && R.propEq(true, key, source),
+);
 
 type CondPred<T> = (x: T) => boolean;
 
@@ -63,6 +67,7 @@ const notEquals = R.complement(R.equals);
 
 export {
 	havingKey,
+	havingTrueKey,
 	prependIf,
 	applyToSourceIf,
 	prependNameValueIf,

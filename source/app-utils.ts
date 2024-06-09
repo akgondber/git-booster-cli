@@ -75,7 +75,7 @@ const collectParameterizedItems = (
 								0,
 								R.prop('name', currentCommand),
 								...argItem.path!,
-						  ]
+							]
 						: [R.propOr('', 'name', currentCommand), 0, argItem.name],
 					states,
 				)
@@ -96,7 +96,7 @@ const getStateValueByKey = (
 		'',
 		[String(R.propOr('', 'name', currentCommand)), 0, key],
 		states,
-	)!;
+	);
 };
 
 const getSubState = (
@@ -106,7 +106,6 @@ const getSubState = (
 ) => {
 	let result: Record<string, any> = {};
 	const namespace = R.prop('name', command);
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const item = R.path([namespace, '0'], states);
 	const filtered = R.pick([namespace], item);
 

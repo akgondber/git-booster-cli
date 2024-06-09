@@ -23,7 +23,7 @@ const safeExecuteCommand = async (
 	} catch (error: any) {
 		return {
 			command,
-			message: error.message!, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+			message: error.message!,
 			status: 'error',
 		};
 	}

@@ -129,6 +129,36 @@ const plainCommands: BlockItem[] = [
 		],
 	},
 	{
+		name: 'setup',
+		displayName: 'setup',
+		subcommandName: 'add',
+		tags: ['scaffold', 'setup', 'quick'],
+		namespaced: true,
+		requestedArgs: [
+			{
+				name: 'message',
+				paramName: '-m',
+				path: ['commit', 'message'],
+				defaultValue: 'Init',
+			},
+			{
+				name: 'remote',
+				paramName: 'add',
+				path: ['remote', 'name'],
+				defaultValue: 'origin',
+				excludeFromCommand: true,
+				mapToSelf: true,
+			},
+			{
+				name: 'url',
+				paramName: '',
+				path: ['remote', 'url'],
+				excludeFromCommand: true,
+				mapToSelf: true,
+			},
+		],
+	},
+	{
 		name: 'log',
 		displayName: 'log',
 		tags: ['log'],

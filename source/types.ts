@@ -50,6 +50,7 @@ type BlockItem = {
 	name: string;
 	displayName: string;
 	requestedArgs: RequestedArgItem[];
+	subcommandName?: string;
 	tags?: string[];
 	desc?: string;
 	namespaced?: boolean;

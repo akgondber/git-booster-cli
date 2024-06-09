@@ -33,9 +33,11 @@ $ git-booster-cli --help
     $ git-booster-cli --tag "add,commit,reset,restore"
 ```
 
-## Demo
+## Demos
 
 ![usage-demo](media/demo.gif)
+
+![setup demo](media/git-setup-demo.gif)
 
 ## Screenshots
 

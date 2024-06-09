@@ -1,21 +1,24 @@
-import test from 'ava';
+import {test} from 'uvu';
+import * as assert from 'uvu/assert';
 import {havingKey} from '../source/ramda-utils.js';
 
-test('havingKey() returns true when key is present', t => {
+test('havingKey() returns true when key is present', () => {
 	const withBarKey = {
 		id: 1,
 		foo: '#1 foo',
 		bar: '#1 bar',
 	};
 
-	t.true(havingKey('bar', withBarKey));
+	assert.ok(havingKey('bar', withBarKey));
 });
 
-test('havingKey() returns false when key is not present', t => {
+test('havingKey() returns false when key is not present', () => {
 	const withoutBarKey = {
 		id: 2,
 		foo: '#2 foo',
 	};
 
-	t.false(havingKey('bar', withoutBarKey));
+	assert.not.ok(havingKey('bar', withoutBarKey));
 });
+
+test.run();

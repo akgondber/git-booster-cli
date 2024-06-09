@@ -2,7 +2,8 @@
 	"extends": "@sindresorhus/tsconfig",
 	"strictFunctionTypes": false,
 	"compilerOptions": {
-		"outDir": "dist"
+		"outDir": "dist",
+		"target": "esnext"
 	},
 	"include": ["source"]
 }
