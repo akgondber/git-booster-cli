@@ -67,7 +67,7 @@ const getErrorMessage = (error: unknown) => {
 const isNotSuccess = R.complement(R.propEq('success', 'status'));
 const messageProp = R.lensProp<CommandResult>('message');
 const buildErrorMessage = (commandResult: CommandResult) =>
-	`There is some error occured while retrieving data:\n${commandResult.message}`;
+	`There is some error occurred while retrieving data:\n${commandResult.message}`;
 const transformErrorResult = (commandResult: CommandResult) =>
 	R.set(messageProp, buildErrorMessage(commandResult), commandResult);
 const buildInfo = (header: string, commandResult: CommandResult) => `
